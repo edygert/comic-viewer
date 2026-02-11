@@ -194,18 +194,17 @@ class ViewerWindow:
             # Clear canvas and display image
             self.canvas.delete('all')
 
-            if self.zoom_mode:
-                # Use NW anchor for scrollable positioning
+            # Determine if scrolling is needed (size-based, works in any mode)
+            img_width, img_height = scaled_image.size
+            needs_scroll = (img_width > canvas_width or img_height > canvas_height)
+
+            if needs_scroll:
+                # Scrollable layout - use NW anchor for scrollable positioning
                 self.canvas.create_image(0, 0, image=self.current_photo, anchor=tk.NW)
-
-                # Set scrollregion to image size
-                img_width, img_height = scaled_image.size
                 self.canvas.configure(scrollregion=(0, 0, img_width, img_height))
-
-                # Show/hide scrollbars based on image vs canvas size
                 self._update_scrollbars(img_width, img_height)
             else:
-                # Existing centered display logic
+                # Centered layout - image fits entirely in canvas
                 self.canvas.create_image(
                     canvas_width // 2,
                     canvas_height // 2,
@@ -458,33 +457,41 @@ class ViewerWindow:
 
     def _on_mouse_wheel(self, event):
         """Handle mouse wheel for vertical scrolling when zoomed."""
-        if not self.zoom_mode:
-            return "break"
+        # Check if scrolling is active (based on scrollregion, not zoom mode)
+        scrollregion = self.canvas.cget('scrollregion')
+        # scrollregion is empty string '' when not set, or '0 0 0 0' when disabled
+        if not scrollregion or scrollregion == '' or scrollregion == '0 0 0 0':
+            return "break"  # No scrolling active
 
         # Detect scroll direction (cross-platform)
-        if hasattr(event, 'delta'):
+        if hasattr(event, 'delta') and event.delta != 0:
             # Windows/Mac: delta is +/- 120
             delta = event.delta
-            scroll_amount = -5 if delta > 0 else 5
+            scroll_amount = 1 if delta > 0 else -1
         else:
-            # Linux: Button-4 is scroll up, Button-5 is scroll down
-            scroll_amount = -5 if event.num == 4 else 5
+            # Linux touchpad: Button-4 is scroll up, Button-5 is scroll down
+            # Traditional scrolling (not inverted)
+            scroll_amount = -1 if event.num == 4 else 1
 
         self.canvas.yview_scroll(scroll_amount, tk.UNITS)
         return "break"  # Prevent event propagation
 
     def _on_shift_wheel(self, event):
         """Handle Shift+MouseWheel for horizontal scrolling when zoomed."""
-        if not self.zoom_mode:
-            return "break"
+        # Check if scrolling is active (based on scrollregion, not zoom mode)
+        scrollregion = self.canvas.cget('scrollregion')
+        # scrollregion is empty string '' when not set, or '0 0 0 0' when disabled
+        if not scrollregion or scrollregion == '' or scrollregion == '0 0 0 0':
+            return "break"  # No scrolling active
 
         # Detect scroll direction (cross-platform)
-        if hasattr(event, 'delta'):
+        if hasattr(event, 'delta') and event.delta != 0:
             delta = event.delta
-            scroll_amount = -5 if delta > 0 else 5
+            scroll_amount = -1 if delta > 0 else 1
         else:
-            # Linux: Button-4 is scroll up (scroll left), Button-5 is scroll down (scroll right)
-            scroll_amount = -5 if event.num == 4 else 5
+            # Linux touchpad: Button-4 is scroll up (left), Button-5 is scroll down (right)
+            # Traditional scrolling (not inverted)
+            scroll_amount = -1 if event.num == 4 else 1
 
         self.canvas.xview_scroll(scroll_amount, tk.UNITS)
         return "break"  # Prevent event propagation
