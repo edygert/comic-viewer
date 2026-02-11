@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Comic Viewer - Lightweight viewer for ZIP archives containing JPEG 2000 images.
 
