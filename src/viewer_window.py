@@ -212,6 +212,9 @@ class ViewerWindow:
                 self.canvas.create_image(0, 0, image=self.current_photo, anchor=tk.NW)
                 self.canvas.configure(scrollregion=(0, 0, img_width, img_height))
                 self._update_scrollbars(img_width, img_height)
+                # Reset scroll position to top-left
+                self.canvas.xview_moveto(0)
+                self.canvas.yview_moveto(0)
             else:
                 # Centered layout - image fits entirely in canvas
                 self.canvas.create_image(
