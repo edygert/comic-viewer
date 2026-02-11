@@ -115,10 +115,12 @@ class ViewerWindow:
 
         # Zoom controls
         self.root.bind('z', lambda e: self.toggle_zoom_mode())
-        self.root.bind('plus', lambda e: self.zoom_in())
-        self.root.bind('equal', lambda e: self.zoom_in())  # + without shift
-        self.root.bind('minus', lambda e: self.zoom_out())
-        self.root.bind('underscore', lambda e: self.zoom_out())  # - without shift
+        self.root.bind('<plus>', lambda e: self.zoom_in())
+        self.root.bind('<equal>', lambda e: self.zoom_in())  # = key (+ without shift)
+        self.root.bind('<KP_Add>', lambda e: self.zoom_in())  # Numpad +
+        self.root.bind('<minus>', lambda e: self.zoom_out())
+        self.root.bind('<underscore>', lambda e: self.zoom_out())  # _ (- with shift)
+        self.root.bind('<KP_Subtract>', lambda e: self.zoom_out())  # Numpad -
         self.root.bind('0', lambda e: self.reset_zoom())
 
         # Mouse wheel zoom (Ctrl+Wheel)
@@ -134,11 +136,15 @@ class ViewerWindow:
         self.root.bind('d', lambda e: self.pan_right())
 
         # Mouse wheel scrolling (when zoomed)
-        self.canvas.bind('<Button-4>', self._on_mouse_wheel)  # Linux scroll up
-        self.canvas.bind('<Button-5>', self._on_mouse_wheel)  # Linux scroll down
+        self.root.bind('<Button-4>', self._on_mouse_wheel)  # Linux scroll up
+        self.root.bind('<Button-5>', self._on_mouse_wheel)  # Linux scroll down
+        self.canvas.bind('<Button-4>', self._on_mouse_wheel)  # Also bind to canvas
+        self.canvas.bind('<Button-5>', self._on_mouse_wheel)
         self.canvas.bind('<MouseWheel>', self._on_mouse_wheel)  # Windows/Mac
-        self.canvas.bind('<Shift-Button-4>', self._on_shift_wheel)  # Linux horizontal
-        self.canvas.bind('<Shift-Button-5>', self._on_shift_wheel)  # Linux horizontal
+        self.root.bind('<Shift-Button-4>', self._on_shift_wheel)  # Linux horizontal
+        self.root.bind('<Shift-Button-5>', self._on_shift_wheel)  # Linux horizontal
+        self.canvas.bind('<Shift-Button-4>', self._on_shift_wheel)  # Also bind to canvas
+        self.canvas.bind('<Shift-Button-5>', self._on_shift_wheel)
 
         # Quit
         self.root.bind('q', lambda e: self.quit())
@@ -453,16 +459,16 @@ class ViewerWindow:
     def _on_mouse_wheel(self, event):
         """Handle mouse wheel for vertical scrolling when zoomed."""
         if not self.zoom_mode:
-            return
+            return "break"
 
         # Detect scroll direction (cross-platform)
         if hasattr(event, 'delta'):
             # Windows/Mac: delta is +/- 120
             delta = event.delta
-            scroll_amount = -3 if delta > 0 else 3
+            scroll_amount = -5 if delta > 0 else 5
         else:
             # Linux: Button-4 is scroll up, Button-5 is scroll down
-            scroll_amount = -3 if event.num == 4 else 3
+            scroll_amount = -5 if event.num == 4 else 5
 
         self.canvas.yview_scroll(scroll_amount, tk.UNITS)
         return "break"  # Prevent event propagation
@@ -470,15 +476,15 @@ class ViewerWindow:
     def _on_shift_wheel(self, event):
         """Handle Shift+MouseWheel for horizontal scrolling when zoomed."""
         if not self.zoom_mode:
-            return
+            return "break"
 
         # Detect scroll direction (cross-platform)
         if hasattr(event, 'delta'):
             delta = event.delta
-            scroll_amount = -3 if delta > 0 else 3
+            scroll_amount = -5 if delta > 0 else 5
         else:
             # Linux: Button-4 is scroll up (scroll left), Button-5 is scroll down (scroll right)
-            scroll_amount = -3 if event.num == 4 else 3
+            scroll_amount = -5 if event.num == 4 else 5
 
         self.canvas.xview_scroll(scroll_amount, tk.UNITS)
         return "break"  # Prevent event propagation
