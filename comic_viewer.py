@@ -13,7 +13,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src import index_manager
+from src import index_manager, state_manager
 from src.image_cache import ImageCache
 from src.viewer_window import ViewerWindow
 
@@ -67,6 +67,7 @@ Keyboard Shortcuts:
     Shift+MouseWheel         Scroll horizontally
 
   Other:
+    g                        Go to page
     q/Escape                 Quit
 
 Index Files:
@@ -112,8 +113,13 @@ Index Files:
         # Initialize image cache
         image_cache = ImageCache(archive_path, index_data, max_cache_size=5)
 
+        # Load last read page if available
+        initial_page = state_manager.load_state(archive_path)
+        if initial_page is None or initial_page >= index_data['total_pages']:
+            initial_page = 0
+
         # Create and run viewer window
-        viewer = ViewerWindow(archive_path, index_data, image_cache)
+        viewer = ViewerWindow(archive_path, index_data, image_cache, initial_page=initial_page)
         print("Launching viewer... (press 'q' to quit)")
         viewer.run()
 

@@ -7,6 +7,7 @@ from typing import Dict
 from PIL import Image, ImageTk
 
 from .image_cache import ImageCache
+from . import state_manager
 
 
 class ViewerWindow:
@@ -16,7 +17,7 @@ class ViewerWindow:
     Uses Tkinter for lightweight, zero-dependency GUI.
     """
 
-    def __init__(self, archive_path: Path, index_data: Dict, image_cache: ImageCache):
+    def __init__(self, archive_path: Path, index_data: Dict, image_cache: ImageCache, initial_page: int = 0):
         """
         Initialize viewer window.
 
@@ -24,6 +25,7 @@ class ViewerWindow:
             archive_path: Path to the archive file
             index_data: Index data with page information
             image_cache: ImageCache instance
+            initial_page: Initial page to display (default 0)
         """
         self.archive_path = archive_path
         self.index_data = index_data
@@ -49,8 +51,8 @@ class ViewerWindow:
         # Bind keyboard shortcuts
         self._bind_shortcuts()
 
-        # Show first page
-        self.show_page(0)
+        # Show initial page
+        self.show_page(initial_page)
 
         # Track window size for resize events
         self.last_window_size = (self.canvas.winfo_width(), self.canvas.winfo_height())
@@ -108,6 +110,7 @@ class ViewerWindow:
 
         self.root.bind('<Home>', lambda e: self.first_page())
         self.root.bind('<End>', lambda e: self.last_page())
+        self.root.bind('g', lambda e: self.goto_page_dialog())
 
         # Viewing modes
         self.root.bind('f', lambda e: self.set_viewing_mode('fit-width'))
@@ -161,6 +164,12 @@ class ViewerWindow:
             return
 
         self.current_page = page_index
+
+        # Save state (opportunistic, silent failures)
+        try:
+            state_manager.save_state(self.archive_path, self.current_page)
+        except Exception:
+            pass  # Don't disrupt viewing
 
         try:
             # Get image from cache
@@ -231,10 +240,10 @@ class ViewerWindow:
         if self.zoom_mode:
             zoom_pct = int(self.zoom_level * 100)
             mode_text = f"Zoom {zoom_pct}%"
-            shortcuts = "[←→ pages, wasd pan, +/- zoom, z exit, q quit]"
+            shortcuts = "[←→ pages, g goto, wasd pan, +/- zoom, z exit, q quit]"
         else:
             mode_text = self.viewing_mode.replace('-', ' ').title()
-            shortcuts = "[←→ navigate, f/h/a modes, z zoom, q quit]"
+            shortcuts = "[←→ navigate, g goto, f/h/a modes, z zoom, q quit]"
 
         status = f"Page {page_num} of {total_pages}  |  Mode: {mode_text}  |  {shortcuts}"
         self.status_bar.config(text=status)
@@ -256,6 +265,25 @@ class ViewerWindow:
     def last_page(self):
         """Navigate to last page."""
         self.show_page(self.index_data['total_pages'] - 1)
+
+    def goto_page_dialog(self):
+        """Show dialog to jump to specific page."""
+        from tkinter import simpledialog
+
+        total_pages = self.index_data['total_pages']
+        current_page = self.current_page + 1  # Convert to 1-based for display
+
+        page_num = simpledialog.askinteger(
+            "Go to Page",
+            f"Enter page number (1-{total_pages}):",
+            initialvalue=current_page,
+            minvalue=1,
+            maxvalue=total_pages,
+            parent=self.root
+        )
+
+        if page_num is not None:
+            self.show_page(page_num - 1)  # Convert back to 0-based
 
     def set_viewing_mode(self, mode: str):
         """
@@ -290,6 +318,12 @@ class ViewerWindow:
 
     def quit(self):
         """Close the viewer."""
+        # Save final state before quitting
+        try:
+            state_manager.save_state(self.archive_path, self.current_page)
+        except Exception as e:
+            print(f"Warning: Could not save state on exit: {e}")
+
         self.root.quit()
         self.root.destroy()
 
