@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 from typing import Dict
-from PIL import ImageTk
+from PIL import Image, ImageTk
 
 from .image_cache import ImageCache
 
@@ -32,6 +32,12 @@ class ViewerWindow:
         self.current_page = 0
         self.viewing_mode = 'fit-width'  # 'fit-width', 'fit-height', 'actual'
 
+        # Zoom state
+        self.zoom_mode = False
+        self.zoom_level = 1.0  # 1.0 = 100%, 2.0 = 200%
+        self.min_zoom = 0.25
+        self.max_zoom = 8.0
+
         # Create window
         self.root = tk.Tk()
         self.root.title(f"Comic Viewer - {archive_path.name}")
@@ -53,16 +59,21 @@ class ViewerWindow:
     def _create_ui(self):
         """Create UI components."""
         # Main frame
-        main_frame = tk.Frame(self.root, bg='#2b2b2b')
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        self.main_frame = tk.Frame(self.root, bg='#2b2b2b')
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Canvas for image display
         self.canvas = tk.Canvas(
-            main_frame,
+            self.main_frame,
             bg='#2b2b2b',
             highlightthickness=0
         )
         self.canvas.pack(fill=tk.BOTH, expand=True)
+
+        # Scrollbars (initially hidden)
+        self.v_scrollbar = tk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.h_scrollbar = tk.Scrollbar(self.root, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
 
         # Status bar
         self.status_bar = tk.Label(
@@ -99,6 +110,31 @@ class ViewerWindow:
         self.root.bind('h', lambda e: self.set_viewing_mode('fit-height'))
         self.root.bind('a', lambda e: self.set_viewing_mode('actual'))
 
+        # Zoom controls
+        self.root.bind('z', lambda e: self.toggle_zoom_mode())
+        self.root.bind('plus', lambda e: self.zoom_in())
+        self.root.bind('equal', lambda e: self.zoom_in())  # + without shift
+        self.root.bind('minus', lambda e: self.zoom_out())
+        self.root.bind('underscore', lambda e: self.zoom_out())  # - without shift
+        self.root.bind('0', lambda e: self.reset_zoom())
+
+        # Mouse wheel zoom (Ctrl+Wheel)
+        self.canvas.bind('<Control-MouseWheel>', self._on_ctrl_wheel)
+        self.canvas.bind('<Control-Button-4>', self._on_ctrl_wheel)  # Linux scroll up
+        self.canvas.bind('<Control-Button-5>', self._on_ctrl_wheel)  # Linux scroll down
+
+        # Pan controls (WASD)
+        self.root.bind('w', lambda e: self.pan_up())
+        self.root.bind('s', lambda e: self.pan_down())
+        self.root.bind('a', lambda e: self.pan_left())
+        self.root.bind('d', lambda e: self.pan_right())
+
+        # Mouse wheel scrolling (when zoomed)
+        self.canvas.bind('<MouseWheel>', self._on_mouse_wheel)
+        self.canvas.bind('<Button-4>', self._on_mouse_wheel)  # Linux scroll up
+        self.canvas.bind('<Button-5>', self._on_mouse_wheel)  # Linux scroll down
+        self.canvas.bind('<Shift-MouseWheel>', self._on_shift_wheel)
+
         # Quit
         self.root.bind('q', lambda e: self.quit())
         self.root.bind('<Escape>', lambda e: self.quit())
@@ -129,24 +165,44 @@ class ViewerWindow:
             if canvas_height <= 1:
                 canvas_height = 900
 
-            # Scale image
-            scaled_image = self.image_cache.scale_image(
-                image,
-                self.viewing_mode,
-                (canvas_width, canvas_height)
-            )
+            # Scale image based on mode
+            if self.zoom_mode:
+                # Apply zoom scaling
+                scaled_image = self._apply_zoom(image, self.zoom_level)
+            else:
+                # Use existing viewing mode logic
+                scaled_image = self.image_cache.scale_image(
+                    image,
+                    self.viewing_mode,
+                    (canvas_width, canvas_height)
+                )
 
             # Convert to PhotoImage
             self.current_photo = ImageTk.PhotoImage(scaled_image)
 
             # Clear canvas and display image
             self.canvas.delete('all')
-            self.canvas.create_image(
-                canvas_width // 2,
-                canvas_height // 2,
-                image=self.current_photo,
-                anchor=tk.CENTER
-            )
+
+            if self.zoom_mode:
+                # Use NW anchor for scrollable positioning
+                self.canvas.create_image(0, 0, image=self.current_photo, anchor=tk.NW)
+
+                # Set scrollregion to image size
+                img_width, img_height = scaled_image.size
+                self.canvas.configure(scrollregion=(0, 0, img_width, img_height))
+
+                # Show/hide scrollbars based on image vs canvas size
+                self._update_scrollbars(img_width, img_height)
+            else:
+                # Existing centered display logic
+                self.canvas.create_image(
+                    canvas_width // 2,
+                    canvas_height // 2,
+                    image=self.current_photo,
+                    anchor=tk.CENTER
+                )
+                self.canvas.configure(scrollregion=(0, 0, 0, 0))
+                self._hide_scrollbars()
 
             # Update status bar
             self._update_status()
@@ -161,8 +217,16 @@ class ViewerWindow:
         """Update status bar text."""
         page_num = self.current_page + 1
         total_pages = self.index_data['total_pages']
-        mode_text = self.viewing_mode.replace('-', ' ').title()
-        status = f"Page {page_num} of {total_pages}  |  Mode: {mode_text}  |  [←→ navigate, f/h/a modes, q quit]"
+
+        if self.zoom_mode:
+            zoom_pct = int(self.zoom_level * 100)
+            mode_text = f"Zoom {zoom_pct}%"
+            shortcuts = "[←→ pages, wasd pan, +/- zoom, z exit, q quit]"
+        else:
+            mode_text = self.viewing_mode.replace('-', ' ').title()
+            shortcuts = "[←→ navigate, f/h/a modes, z zoom, q quit]"
+
+        status = f"Page {page_num} of {total_pages}  |  Mode: {mode_text}  |  {shortcuts}"
         self.status_bar.config(text=status)
 
     def next_page(self):
@@ -192,6 +256,7 @@ class ViewerWindow:
         """
         if mode in ('fit-width', 'fit-height', 'actual'):
             self.viewing_mode = mode
+            self.zoom_mode = False  # Exit zoom when switching modes
             self.show_page(self.current_page)
 
     def _on_window_resize(self, event):
@@ -207,6 +272,12 @@ class ViewerWindow:
                 # Refresh current page with new size
                 self.show_page(self.current_page)
 
+                # If in zoom mode, update scrollbar visibility
+                if self.zoom_mode and self.current_photo:
+                    img_width = self.current_photo.width()
+                    img_height = self.current_photo.height()
+                    self._update_scrollbars(img_width, img_height)
+
     def quit(self):
         """Close the viewer."""
         self.root.quit()
@@ -215,3 +286,158 @@ class ViewerWindow:
     def run(self):
         """Start the Tkinter main loop."""
         self.root.mainloop()
+
+    def _apply_zoom(self, image, zoom_level):
+        """
+        Apply zoom scaling to image.
+
+        Args:
+            image: PIL Image to zoom
+            zoom_level: Zoom multiplier (1.0 = 100%, 2.0 = 200%)
+
+        Returns:
+            Zoomed PIL Image
+        """
+        original_width, original_height = image.size
+        new_width = int(original_width * zoom_level)
+        new_height = int(original_height * zoom_level)
+        return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+    def _update_scrollbars(self, img_width, img_height):
+        """
+        Show/hide scrollbars based on image size vs canvas size.
+
+        Args:
+            img_width: Width of the displayed image
+            img_height: Height of the displayed image
+        """
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        # Show vertical scrollbar if image taller than canvas
+        if img_height > canvas_height:
+            self.v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, before=self.canvas)
+        else:
+            self.v_scrollbar.pack_forget()
+
+        # Show horizontal scrollbar if image wider than canvas
+        if img_width > canvas_width:
+            self.h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X, before=self.status_bar)
+        else:
+            self.h_scrollbar.pack_forget()
+
+    def _hide_scrollbars(self):
+        """Hide both scrollbars."""
+        self.v_scrollbar.pack_forget()
+        self.h_scrollbar.pack_forget()
+
+    def toggle_zoom_mode(self):
+        """Toggle zoom mode on/off."""
+        self.zoom_mode = not self.zoom_mode
+        if self.zoom_mode:
+            # Enter zoom mode at 100%
+            self.zoom_level = 1.0
+            self.viewing_mode = 'zoom'
+        else:
+            # Exit zoom mode, return to fit-width
+            self.viewing_mode = 'fit-width'
+        self.show_page(self.current_page)
+
+    def zoom_in(self):
+        """Increase zoom level by 25%."""
+        if not self.zoom_mode:
+            self.toggle_zoom_mode()
+
+        self.zoom_level = min(self.zoom_level + 0.25, self.max_zoom)
+        self.show_page(self.current_page)
+
+    def zoom_out(self):
+        """Decrease zoom level by 25%."""
+        if not self.zoom_mode:
+            self.toggle_zoom_mode()
+
+        self.zoom_level = max(self.zoom_level - 0.25, self.min_zoom)
+        self.show_page(self.current_page)
+
+    def reset_zoom(self):
+        """Reset zoom to 100% and center."""
+        if not self.zoom_mode:
+            self.toggle_zoom_mode()
+
+        self.zoom_level = 1.0
+        self.show_page(self.current_page)
+        # Center the view
+        self.canvas.xview_moveto(0.25)
+        self.canvas.yview_moveto(0.25)
+
+    def _on_ctrl_wheel(self, event):
+        """Handle Ctrl+MouseWheel for continuous zoom."""
+        if not self.zoom_mode:
+            self.toggle_zoom_mode()
+
+        # Detect scroll direction (cross-platform)
+        if hasattr(event, 'delta'):
+            delta = event.delta
+        else:
+            # Linux: Button-4 is scroll up, Button-5 is scroll down
+            delta = 1 if event.num == 4 else -1
+
+        # Zoom in/out by 10% per wheel notch
+        if delta > 0:
+            self.zoom_level = min(self.zoom_level * 1.1, self.max_zoom)
+        else:
+            self.zoom_level = max(self.zoom_level / 1.1, self.min_zoom)
+
+        self.show_page(self.current_page)
+
+    def pan_up(self):
+        """Pan view upward (WASD control)."""
+        if not self.zoom_mode:
+            return
+        self.canvas.yview_scroll(-1, tk.UNITS)
+
+    def pan_down(self):
+        """Pan view downward (WASD control)."""
+        if not self.zoom_mode:
+            return
+        self.canvas.yview_scroll(1, tk.UNITS)
+
+    def pan_left(self):
+        """Pan view left (WASD control)."""
+        if not self.zoom_mode:
+            return
+        self.canvas.xview_scroll(-1, tk.UNITS)
+
+    def pan_right(self):
+        """Pan view right (WASD control)."""
+        if not self.zoom_mode:
+            return
+        self.canvas.xview_scroll(1, tk.UNITS)
+
+    def _on_mouse_wheel(self, event):
+        """Handle mouse wheel for vertical scrolling when zoomed."""
+        if not self.zoom_mode:
+            return
+
+        # Detect scroll direction (cross-platform)
+        if hasattr(event, 'delta'):
+            delta = event.delta
+        else:
+            # Linux: Button-4 is scroll up, Button-5 is scroll down
+            delta = 1 if event.num == 4 else -1
+
+        self.canvas.yview_scroll(-1 if delta > 0 else 1, tk.UNITS)
+
+    def _on_shift_wheel(self, event):
+        """Handle Shift+MouseWheel for horizontal scrolling when zoomed."""
+        if not self.zoom_mode:
+            return
+
+        # Detect scroll direction (cross-platform)
+        if hasattr(event, 'delta'):
+            delta = event.delta
+        else:
+            # Linux: Button-4 is scroll up, Button-5 is scroll down
+            delta = 1 if event.num == 4 else -1
+
+        self.canvas.xview_scroll(-1 if delta > 0 else 1, tk.UNITS)

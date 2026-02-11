@@ -44,14 +44,30 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Keyboard Shortcuts:
-  Right/Space/Page Down    Next page
-  Left/Backspace/Page Up   Previous page
-  Home                     First page
-  End                      Last page
-  f                        Fit to width
-  h                        Fit to height
-  a                        Actual size
-  q/Escape                 Quit
+  Navigation:
+    Right/Space/Page Down    Next page
+    Left/Backspace/Page Up   Previous page
+    Home                     First page
+    End                      Last page
+
+  Viewing Modes:
+    f                        Fit to width
+    h                        Fit to height
+    a                        Actual size
+
+  Zoom:
+    z                        Toggle zoom mode
+    +/-                      Zoom in/out (25% increments)
+    0                        Reset zoom to 100%
+    Ctrl+MouseWheel          Continuous zoom
+
+  Pan (when zoomed):
+    w/a/s/d                  Pan up/left/down/right
+    MouseWheel               Scroll vertically
+    Shift+MouseWheel         Scroll horizontally
+
+  Other:
+    q/Escape                 Quit
 
 Index Files:
   Index files are cached in ~/.cache/comic_viewer/ to speed up
