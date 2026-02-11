@@ -1,0 +1,4 @@
+Pillow==12.1.0
+natsort==8.4.0
+xxhash==3.5.0
+xdg-base-dirs==6.0.2
