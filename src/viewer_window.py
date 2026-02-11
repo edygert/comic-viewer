@@ -149,6 +149,9 @@ class ViewerWindow:
         self.canvas.bind('<Shift-Button-4>', self._on_shift_wheel)  # Also bind to canvas
         self.canvas.bind('<Shift-Button-5>', self._on_shift_wheel)
 
+        # Help
+        self.root.bind('?', lambda e: self.show_help())
+
         # Quit
         self.root.bind('q', lambda e: self.quit())
         self.root.bind('<Escape>', lambda e: self.quit())
@@ -243,10 +246,10 @@ class ViewerWindow:
         if self.zoom_mode:
             zoom_pct = int(self.zoom_level * 100)
             mode_text = f"Zoom {zoom_pct}%"
-            shortcuts = "[←→ pages, g goto, wasd pan, +/- zoom, z exit, q quit]"
+            shortcuts = "[←→ pages, g goto, wasd pan, +/- zoom, z exit, ? help, q quit]"
         else:
             mode_text = self.viewing_mode.replace('-', ' ').title()
-            shortcuts = "[←→ navigate, g goto, f/h/a modes, z zoom, q quit]"
+            shortcuts = "[←→ navigate, g goto, f/h/a modes, z zoom, ? help, q quit]"
 
         status = f"Page {page_num} of {total_pages}  |  Mode: {mode_text}  |  {shortcuts}"
         self.status_bar.config(text=status)
@@ -287,6 +290,99 @@ class ViewerWindow:
 
         if page_num is not None:
             self.show_page(page_num - 1)  # Convert back to 0-based
+
+    def show_help(self):
+        """Show help dialog with keyboard shortcuts and usage information."""
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Comic Viewer - Keyboard Shortcuts")
+        help_window.geometry("600x700")
+        help_window.transient(self.root)
+        help_window.grab_set()
+
+        # Create scrollable text widget
+        frame = tk.Frame(help_window)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        text = tk.Text(frame, wrap=tk.WORD, yscrollcommand=scrollbar.set,
+                      font=("Monospace", 10), padx=10, pady=10)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=text.yview)
+
+        # Help content
+        help_text = """COMIC VIEWER - KEYBOARD SHORTCUTS
+
+NAVIGATION
+  ←  Left Arrow           Previous page
+  →  Right Arrow          Next page
+  Space                   Next page
+  Backspace              Previous page
+  Page Up                Previous page
+  Page Down              Next page
+  Home                   First page
+  End                    Last page
+  g                      Go to page (dialog)
+
+VIEWING MODES
+  f                      Fit to width
+  h                      Fit to height
+  a                      Actual size (or pan left when zoomed)
+
+ZOOM
+  z                      Toggle zoom mode
+  +  =                   Zoom in (25% increments)
+  -  _                   Zoom out (25% increments)
+  0                      Reset zoom to 100% (fit-width)
+  Ctrl + MouseWheel      Continuous zoom
+
+PAN (when zoomed)
+  w                      Pan up
+  s                      Pan down
+  a                      Pan left
+  d                      Pan right
+  MouseWheel             Scroll vertically
+  Shift + MouseWheel     Scroll horizontally
+
+OTHER
+  ?                      Show this help screen
+  q  Escape              Quit viewer
+
+FEATURES
+• Last read page is automatically saved and restored
+• State files stored in ~/.cache/comic_viewer/
+• Index files cached for faster subsequent opens
+• Supports ZIP archives with JPEG, PNG, GIF, WebP, JPEG 2000
+
+TIPS
+• Press 'z' to enter zoom mode, then use +/- to adjust zoom level
+• Use 'g' to quickly jump to any page number
+• Zoom is relative to fit-width size for consistency
+• State is validated using file content hash
+"""
+
+        text.insert("1.0", help_text)
+        text.config(state=tk.DISABLED)  # Make read-only
+
+        # Close button
+        close_btn = tk.Button(help_window, text="Close", command=help_window.destroy,
+                             padx=20, pady=5)
+        close_btn.pack(pady=10)
+
+        # Center the window
+        help_window.update_idletasks()
+        x = (help_window.winfo_screenwidth() // 2) - (help_window.winfo_width() // 2)
+        y = (help_window.winfo_screenheight() // 2) - (help_window.winfo_height() // 2)
+        help_window.geometry(f"+{x}+{y}")
+
+        # Focus on close button
+        close_btn.focus_set()
+
+        # Bind Escape and ? to close
+        help_window.bind('<Escape>', lambda e: help_window.destroy())
+        help_window.bind('?', lambda e: help_window.destroy())
+        help_window.bind('q', lambda e: help_window.destroy())
 
     def set_viewing_mode(self, mode: str):
         """

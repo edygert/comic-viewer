@@ -68,6 +68,7 @@ Keyboard Shortcuts:
 
   Other:
     g                        Go to page
+    ?                        Show help screen
     q/Escape                 Quit
 
 Index Files:
