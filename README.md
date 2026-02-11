@@ -13,16 +13,29 @@ A lightweight Linux application for viewing ZIP archives containing JPEG 2000 (.
 
 ## Installation
 
-### Prerequisites
+### For End Users (Standalone Executable)
+
+**Download and run - no Python required!**
+
+1. Download the latest release: `comic-viewer-vX.X.X-linux-x64.tar.gz`
+2. Extract: `tar -xzf comic-viewer-vX.X.X-linux-x64.tar.gz`
+3. Install: `cd comic-viewer && ./install.sh`
+4. Run: `comic-viewer /path/to/comic.zip`
+
+See `DEPLOYMENT.md` for detailed deployment instructions.
+
+### For Developers
+
+#### Prerequisites
 
 - Python 3.7+ (with tkinter)
 - `uv` (Python package manager)
 
-### Setup
+#### Setup
 
 ```bash
 # Clone or navigate to the project directory
-cd cbr_convert
+cd comic_viewer
 
 # Create virtual environment with uv
 uv venv
@@ -254,6 +267,34 @@ ls ~/.cache/comic_viewer/
 # Test index reuse (should be faster second time)
 python comic_viewer.py /path/to/test.zip
 ```
+
+## Building and Deploying
+
+### Build Standalone Executable
+
+Create a self-contained executable for deployment to other Linux machines:
+
+```bash
+# Build the executable
+./build.sh
+
+# Package for distribution
+./package-release.sh 1.0.0
+```
+
+This creates:
+- **Executable**: `dist/comic-viewer` (~26 MB)
+- **Distribution package**: `comic-viewer-v1.0.0-linux-x64.tar.gz`
+
+### Deployment
+
+The standalone executable:
+- **No Python required** on target machines
+- **Self-contained**: includes all dependencies
+- **Portable**: single file deployment
+- **Cross-distribution**: works on any modern Linux (glibc 2.36+)
+
+See **DEPLOYMENT.md** for complete deployment instructions, system requirements, and distribution methods.
 
 ## License
 
