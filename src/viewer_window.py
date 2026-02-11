@@ -43,8 +43,20 @@ class ViewerWindow:
         # Create window
         self.root = tk.Tk()
         self.root.title(f"Comic Viewer - {archive_path.name}")
-        self.root.geometry("1200x900")
-        self.root.state('zoomed')  # Start maximized
+
+        # Maximize window (cross-platform)
+        try:
+            self.root.state('zoomed')  # Windows
+        except tk.TclError:
+            # Linux/Unix - use attributes or geometry
+            try:
+                self.root.attributes('-zoomed', True)  # Some Linux WMs
+            except tk.TclError:
+                # Fallback: maximize using screen dimensions
+                self.root.update_idletasks()
+                screen_width = self.root.winfo_screenwidth()
+                screen_height = self.root.winfo_screenheight()
+                self.root.geometry(f"{screen_width}x{screen_height}+0+0")
 
         # Create UI
         self._create_ui()
