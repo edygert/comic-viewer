@@ -44,6 +44,7 @@ class ViewerWindow:
         self.root = tk.Tk()
         self.root.title(f"Comic Viewer - {archive_path.name}")
         self.root.geometry("1200x900")
+        self.root.state('zoomed')  # Start maximized
 
         # Create UI
         self._create_ui()
