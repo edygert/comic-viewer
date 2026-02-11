@@ -24,7 +24,7 @@ PYINSTALLER=".venv/bin/pyinstaller"
 
 if [ ! -f "$PYINSTALLER" ]; then
     echo "PyInstaller not found in venv. Installing..."
-    $PYTHON -m pip install pyinstaller
+    uv pip install pyinstaller
 fi
 
 # Clean previous builds
