@@ -62,18 +62,22 @@ class ViewerWindow:
         self.main_frame = tk.Frame(self.root, bg='#2b2b2b')
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Canvas for image display
+        # Canvas for image display (create first)
         self.canvas = tk.Canvas(
             self.main_frame,
             bg='#2b2b2b',
             highlightthickness=0
         )
-        self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Scrollbars (initially hidden)
+        # Scrollbars (create after canvas so we can reference it)
         self.v_scrollbar = tk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.h_scrollbar = tk.Scrollbar(self.root, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        self.h_scrollbar = tk.Scrollbar(self.main_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
+
+        # Configure canvas to use scrollbars
         self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+
+        # Pack canvas (scrollbars will be packed/unpacked dynamically)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
         # Status bar
         self.status_bar = tk.Label(
@@ -108,7 +112,6 @@ class ViewerWindow:
         # Viewing modes
         self.root.bind('f', lambda e: self.set_viewing_mode('fit-width'))
         self.root.bind('h', lambda e: self.set_viewing_mode('fit-height'))
-        self.root.bind('a', lambda e: self.set_viewing_mode('actual'))
 
         # Zoom controls
         self.root.bind('z', lambda e: self.toggle_zoom_mode())
@@ -123,17 +126,19 @@ class ViewerWindow:
         self.canvas.bind('<Control-Button-4>', self._on_ctrl_wheel)  # Linux scroll up
         self.canvas.bind('<Control-Button-5>', self._on_ctrl_wheel)  # Linux scroll down
 
-        # Pan controls (WASD)
+        # Pan controls (WASD) and mode switching
+        # These handle both pan (in zoom mode) and mode switching (not in zoom mode)
         self.root.bind('w', lambda e: self.pan_up())
         self.root.bind('s', lambda e: self.pan_down())
-        self.root.bind('a', lambda e: self.pan_left())
+        self.root.bind('a', lambda e: self._handle_a_key())
         self.root.bind('d', lambda e: self.pan_right())
 
         # Mouse wheel scrolling (when zoomed)
-        self.canvas.bind('<MouseWheel>', self._on_mouse_wheel)
         self.canvas.bind('<Button-4>', self._on_mouse_wheel)  # Linux scroll up
         self.canvas.bind('<Button-5>', self._on_mouse_wheel)  # Linux scroll down
-        self.canvas.bind('<Shift-MouseWheel>', self._on_shift_wheel)
+        self.canvas.bind('<MouseWheel>', self._on_mouse_wheel)  # Windows/Mac
+        self.canvas.bind('<Shift-Button-4>', self._on_shift_wheel)  # Linux horizontal
+        self.canvas.bind('<Shift-Button-5>', self._on_shift_wheel)  # Linux horizontal
 
         # Quit
         self.root.bind('q', lambda e: self.quit())
@@ -291,16 +296,33 @@ class ViewerWindow:
         """
         Apply zoom scaling to image.
 
+        Zoom is relative to fit-width size to maintain consistent zoom levels
+        across pages with different image sizes.
+
         Args:
             image: PIL Image to zoom
-            zoom_level: Zoom multiplier (1.0 = 100%, 2.0 = 200%)
+            zoom_level: Zoom multiplier (1.0 = 100% = fit-width, 2.0 = 200%)
 
         Returns:
             Zoomed PIL Image
         """
-        original_width, original_height = image.size
-        new_width = int(original_width * zoom_level)
-        new_height = int(original_height * zoom_level)
+        # First scale to fit-width as the base
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        if canvas_width <= 1:
+            canvas_width = 1200
+        if canvas_height <= 1:
+            canvas_height = 900
+
+        # Get fit-width dimensions
+        base_image = self.image_cache.scale_image(image, 'fit-width', (canvas_width, canvas_height))
+        base_width, base_height = base_image.size
+
+        # Apply zoom to fit-width size
+        new_width = int(base_width * zoom_level)
+        new_height = int(base_height * zoom_level)
+
         return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     def _update_scrollbars(self, img_width, img_height):
@@ -314,17 +336,24 @@ class ViewerWindow:
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
 
-        # Show vertical scrollbar if image taller than canvas
-        if img_height > canvas_height:
-            self.v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, before=self.canvas)
-        else:
-            self.v_scrollbar.pack_forget()
+        # Unpack both scrollbars first
+        self.v_scrollbar.pack_forget()
+        self.h_scrollbar.pack_forget()
 
-        # Show horizontal scrollbar if image wider than canvas
-        if img_width > canvas_width:
-            self.h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X, before=self.status_bar)
-        else:
-            self.h_scrollbar.pack_forget()
+        # Repack canvas to reset layout
+        self.canvas.pack_forget()
+
+        # Show scrollbars based on need
+        needs_vscroll = img_height > canvas_height
+        needs_hscroll = img_width > canvas_width
+
+        if needs_vscroll:
+            self.v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        if needs_hscroll:
+            self.h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Repack canvas
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
     def _hide_scrollbars(self):
         """Hide both scrollbars."""
@@ -390,29 +419,36 @@ class ViewerWindow:
 
         self.show_page(self.current_page)
 
+    def _handle_a_key(self):
+        """Handle 'a' key - actual size mode or pan left depending on zoom mode."""
+        if self.zoom_mode:
+            self.pan_left()
+        else:
+            self.set_viewing_mode('actual')
+
     def pan_up(self):
         """Pan view upward (WASD control)."""
         if not self.zoom_mode:
             return
-        self.canvas.yview_scroll(-1, tk.UNITS)
+        self.canvas.yview_scroll(-5, tk.UNITS)
 
     def pan_down(self):
         """Pan view downward (WASD control)."""
         if not self.zoom_mode:
             return
-        self.canvas.yview_scroll(1, tk.UNITS)
+        self.canvas.yview_scroll(5, tk.UNITS)
 
     def pan_left(self):
         """Pan view left (WASD control)."""
         if not self.zoom_mode:
             return
-        self.canvas.xview_scroll(-1, tk.UNITS)
+        self.canvas.xview_scroll(-5, tk.UNITS)
 
     def pan_right(self):
         """Pan view right (WASD control)."""
         if not self.zoom_mode:
             return
-        self.canvas.xview_scroll(1, tk.UNITS)
+        self.canvas.xview_scroll(5, tk.UNITS)
 
     def _on_mouse_wheel(self, event):
         """Handle mouse wheel for vertical scrolling when zoomed."""
@@ -421,12 +457,15 @@ class ViewerWindow:
 
         # Detect scroll direction (cross-platform)
         if hasattr(event, 'delta'):
+            # Windows/Mac: delta is +/- 120
             delta = event.delta
+            scroll_amount = -3 if delta > 0 else 3
         else:
             # Linux: Button-4 is scroll up, Button-5 is scroll down
-            delta = 1 if event.num == 4 else -1
+            scroll_amount = -3 if event.num == 4 else 3
 
-        self.canvas.yview_scroll(-1 if delta > 0 else 1, tk.UNITS)
+        self.canvas.yview_scroll(scroll_amount, tk.UNITS)
+        return "break"  # Prevent event propagation
 
     def _on_shift_wheel(self, event):
         """Handle Shift+MouseWheel for horizontal scrolling when zoomed."""
@@ -436,8 +475,10 @@ class ViewerWindow:
         # Detect scroll direction (cross-platform)
         if hasattr(event, 'delta'):
             delta = event.delta
+            scroll_amount = -3 if delta > 0 else 3
         else:
-            # Linux: Button-4 is scroll up, Button-5 is scroll down
-            delta = 1 if event.num == 4 else -1
+            # Linux: Button-4 is scroll up (scroll left), Button-5 is scroll down (scroll right)
+            scroll_amount = -3 if event.num == 4 else 3
 
-        self.canvas.xview_scroll(-1 if delta > 0 else 1, tk.UNITS)
+        self.canvas.xview_scroll(scroll_amount, tk.UNITS)
+        return "break"  # Prevent event propagation

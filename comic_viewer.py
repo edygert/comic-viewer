@@ -53,12 +53,12 @@ Keyboard Shortcuts:
   Viewing Modes:
     f                        Fit to width
     h                        Fit to height
-    a                        Actual size
+    a                        Actual size (or pan left when zoomed)
 
   Zoom:
     z                        Toggle zoom mode
     +/-                      Zoom in/out (25% increments)
-    0                        Reset zoom to 100%
+    0                        Reset zoom to 100% (fit-width)
     Ctrl+MouseWheel          Continuous zoom
 
   Pan (when zoomed):
