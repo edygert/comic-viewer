@@ -44,6 +44,12 @@ class ViewerWindow:
         self.root = tk.Tk()
         self.root.title(f"Comic Viewer - {archive_path.name}")
 
+        # Configure cursor to use system theme
+        try:
+            self.root.config(cursor="")  # Empty string uses system default
+        except tk.TclError:
+            pass  # Fallback if cursor config fails
+
         # Maximize window (cross-platform)
         try:
             self.root.state('zoomed')  # Windows
@@ -81,7 +87,8 @@ class ViewerWindow:
         self.canvas = tk.Canvas(
             self.main_frame,
             bg='#2b2b2b',
-            highlightthickness=0
+            highlightthickness=0,
+            cursor=""  # Use system default cursor
         )
 
         # Scrollbars (create after canvas so we can reference it)
