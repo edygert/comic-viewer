@@ -78,6 +78,10 @@ The built-in file browser lets you:
 - Go to parent directory with the `..` entry at the top
 - Filter automatically for comic files (`.cbz` or files containing `jp2`)
 - See directories in cyan/bold, files in white
+- Use arrow keys (↑/↓) to navigate the list
+- Use Home/End to jump to first/last item
+- Use Page Up/Page Down for faster scrolling
+- Press Enter to select the highlighted file/directory
 - Press Escape to exit (if no file is open) or cancel (if switching files)
 
 While reading a comic, press `o` to open the file browser and switch to a different file.

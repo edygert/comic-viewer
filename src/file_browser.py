@@ -147,8 +147,23 @@ class FileBrowser:
         # Double-click - open selected item
         self.listbox.bind('<Double-Button-1>', self._on_select)
 
+        # Arrow keys - navigate list (explicit bindings for clarity)
+        self.listbox.bind('<Up>', self._on_arrow_key)
+        self.listbox.bind('<Down>', self._on_arrow_key)
+
+        # Home/End - jump to first/last item
+        self.listbox.bind('<Home>', self._on_home_key)
+        self.listbox.bind('<End>', self._on_end_key)
+
+        # Page Up/Down - scroll by page
+        self.listbox.bind('<Prior>', self._on_page_up)  # Page Up
+        self.listbox.bind('<Next>', self._on_page_down)  # Page Down
+
         # Escape key - cancel
         self.dialog.bind('<Escape>', lambda e: self._on_cancel())
+
+        # Focus on listbox for immediate keyboard navigation
+        self.listbox.focus_set()
 
     def _populate_list(self):
         """Populate listbox with directories and files."""
@@ -229,6 +244,73 @@ class FileBrowser:
         if self.listbox.size() > 0:
             self.listbox.selection_set(0)
             self.listbox.activate(0)
+            self.listbox.focus_set()  # Ensure focus for keyboard navigation
+
+    def _on_arrow_key(self, event):
+        """Handle up/down arrow keys for list navigation."""
+        # Let the default Listbox behavior handle it
+        # This method exists to ensure the binding is explicit
+        return
+
+    def _on_home_key(self, event):
+        """Handle Home key - jump to first item."""
+        if self.listbox.size() > 0:
+            self.listbox.selection_clear(0, tk.END)
+            self.listbox.selection_set(0)
+            self.listbox.activate(0)
+            self.listbox.see(0)
+        return 'break'  # Prevent default behavior
+
+    def _on_end_key(self, event):
+        """Handle End key - jump to last item."""
+        size = self.listbox.size()
+        if size > 0:
+            self.listbox.selection_clear(0, tk.END)
+            self.listbox.selection_set(size - 1)
+            self.listbox.activate(size - 1)
+            self.listbox.see(size - 1)
+        return 'break'  # Prevent default behavior
+
+    def _on_page_up(self, event):
+        """Handle Page Up - scroll up by visible page."""
+        # Get current selection
+        selection = self.listbox.curselection()
+        current = selection[0] if selection else 0
+
+        # Get visible height (approximate items per page)
+        visible_lines = int(self.listbox.cget('height'))
+        if visible_lines == 0:
+            visible_lines = 10  # Default fallback
+
+        # Jump up by page size
+        new_index = max(0, current - visible_lines)
+
+        self.listbox.selection_clear(0, tk.END)
+        self.listbox.selection_set(new_index)
+        self.listbox.activate(new_index)
+        self.listbox.see(new_index)
+        return 'break'  # Prevent default behavior
+
+    def _on_page_down(self, event):
+        """Handle Page Down - scroll down by visible page."""
+        # Get current selection
+        selection = self.listbox.curselection()
+        current = selection[0] if selection else 0
+
+        # Get visible height (approximate items per page)
+        visible_lines = int(self.listbox.cget('height'))
+        if visible_lines == 0:
+            visible_lines = 10  # Default fallback
+
+        # Jump down by page size
+        size = self.listbox.size()
+        new_index = min(size - 1, current + visible_lines)
+
+        self.listbox.selection_clear(0, tk.END)
+        self.listbox.selection_set(new_index)
+        self.listbox.activate(new_index)
+        self.listbox.see(new_index)
+        return 'break'  # Prevent default behavior
 
     def _on_select(self, event):
         """Handle Enter key or double-click on selected item."""
