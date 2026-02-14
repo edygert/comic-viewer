@@ -3,11 +3,12 @@
 import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from PIL import Image, ImageTk
 
 from .image_cache import ImageCache
-from . import state_manager
+from . import state_manager, config_manager
+from .file_browser import FileBrowser
 
 
 class ViewerWindow:
@@ -39,6 +40,9 @@ class ViewerWindow:
         self.zoom_level = 1.0  # 1.0 = 100%, 2.0 = 200%
         self.min_zoom = 0.25
         self.max_zoom = 8.0
+
+        # File switching state
+        self.switch_to_file = None
 
         # Create window
         self.root = tk.Tk()
@@ -171,6 +175,9 @@ class ViewerWindow:
 
         # Help
         self.root.bind('?', lambda e: self.show_help())
+
+        # Open file browser
+        self.root.bind('o', lambda e: self.open_file_browser())
 
         # Quit
         self.root.bind('q', lambda e: self.quit())
@@ -366,6 +373,7 @@ PAN (when zoomed)
   Shift + MouseWheel     Scroll horizontally
 
 OTHER
+  o                      Open file browser
   ?                      Show this help screen
   q  Escape              Quit viewer
 
@@ -435,6 +443,30 @@ TIPS
                     img_height = self.current_photo.height()
                     self._update_scrollbars(img_width, img_height)
 
+    def open_file_browser(self):
+        """Open file browser to select a different file."""
+        # Save current state
+        try:
+            state_manager.save_state(self.archive_path, self.current_page)
+        except Exception as e:
+            print(f"Warning: Could not save state: {e}")
+
+        # Get current directory to start browsing there
+        current_dir = self.archive_path.parent
+
+        # Show file browser
+        browser = FileBrowser(self.root, current_dir)
+        selected_file = browser.show()
+
+        if selected_file:
+            # User selected a new file
+            self.switch_to_file = selected_file
+            # Remember directory
+            config_manager.update_last_browsed_directory(selected_file.parent)
+            # Close viewer
+            self.quit()
+        # If no file selected (cancelled), continue viewing current file
+
     def quit(self):
         """Close the viewer."""
         # Save final state before quitting
@@ -446,9 +478,15 @@ TIPS
         self.root.quit()
         self.root.destroy()
 
-    def run(self):
-        """Start the Tkinter main loop."""
+    def run(self) -> Optional[Path]:
+        """
+        Start the Tkinter main loop.
+
+        Returns:
+            Path to new file if user wants to switch files, None otherwise
+        """
         self.root.mainloop()
+        return self.switch_to_file
 
     def _apply_zoom(self, image, zoom_level):
         """

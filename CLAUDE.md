@@ -32,34 +32,66 @@ python cbr_viewer.py [file.cbr]
 
 ### Core Components
 
-1. **Archive Handler**
-   - Extract images from CBR (RAR) files
-   - Support CBZ (ZIP) for broader compatibility
-   - Handle common image formats: JPEG, PNG, GIF, WebP
+1. **File Browser (file_browser.py)**
+   - Modal Tkinter dialog for browsing directories
+   - Filters for CBZ and JP2 files (case-insensitive)
+   - Directory navigation with visual distinction
+   - Remembers last browsed location
+
+2. **Configuration Management (config_manager.py)**
+   - JSON config at ~/.config/comic_viewer/config.json
+   - Stores last browsed directory
+   - Follows XDG Base Directory standards
+   - Graceful error handling (print warnings, never crash)
+
+3. **Archive Handler (archive_handler.py)**
+   - Extract images from ZIP/CBZ files (uses Python's built-in zipfile)
+   - Handle common image formats: JPEG 2000, PNG, GIF, WebP
    - Natural sort ordering for page sequence
+   - Memory-based extraction (no temp files)
 
-2. **Lightweight Image Display**
-   - Minimal GUI framework (consider: tkinter for zero extra deps, or PyQt6/PySide6)
-   - Basic navigation: next/previous page, keyboard shortcuts
-   - Essential viewing modes: fit-to-width, fit-to-height, actual size
-   - Fast image loading and caching
+4. **Image Display & Viewing (viewer_window.py)**
+   - Tkinter GUI with dark theme
+   - Multiple viewing modes: fit-to-width, fit-to-height, actual size
+   - Full zoom and pan support
+   - Keyboard shortcuts for all operations
+   - File switching support (press 'o' to open browser while viewing)
 
-3. **File Management**
-   - Temporary extraction handling
-   - Cleanup on exit
-   - Lazy loading for large archives
+5. **Index Management (index_manager.py)**
+   - JSON index files cached at ~/.cache/comic_viewer/
+   - Stores page metadata for fast random access
+   - Validates via mtime, size, and xxhash
+   - Instant startup on subsequent opens
+
+6. **State Tracking (state_manager.py)**
+   - Remembers last read page per archive
+   - Saves state automatically while reading
+   - Validates state with archive hash
+
+7. **Image Caching (image_cache.py)**
+   - LRU cache keeping last 5 images in memory
+   - Background preloading for smooth navigation
+   - Memory-efficient decoded image storage
 
 ## Technical Decisions
 
-- **Archive Extraction**: Use `rarfile` library (wraps unrar command-line tool)
-- **Image Handling**: Pillow (PIL) for image loading and basic manipulation
-- **GUI Framework**: Prioritize lightweight options that don't require heavy dependencies
-- **No Database**: Simple file-based approach, no library management complexity
+- **Archive Format**: ZIP/CBZ (uses Python's built-in `zipfile` - no external dependencies)
+- **Image Handling**: Pillow (PIL) for image loading with JPEG 2000 support
+- **GUI Framework**: Tkinter (zero extra dependencies, included with Python)
+- **Configuration**: JSON files in XDG directories (config and cache)
+- **No Database**: Simple file-based approach for maximum portability
+- **File Browser**: Built-in modal dialog, no need for external file managers
 
 ## Code Organization
 
-Keep it simple:
-- Single main script or minimal module structure
-- Archive handling utilities
-- Image viewer window class
-- Clean separation between archive I/O and display logic
+Clean modular structure:
+- **comic_viewer.py**: Main entry point with file switching loop
+- **src/config_manager.py**: Configuration persistence
+- **src/file_browser.py**: File browser UI component
+- **src/viewer_window.py**: Main viewing window with all interactions
+- **src/index_manager.py**: Index creation and validation
+- **src/archive_handler.py**: ZIP extraction utilities
+- **src/image_cache.py**: Image caching with LRU and preloading
+- **src/state_manager.py**: Reading progress tracking
+
+Each module has a single, clear responsibility with graceful error handling.

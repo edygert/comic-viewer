@@ -4,11 +4,14 @@ A lightweight Linux application for viewing ZIP archives containing JPEG 2000 (.
 
 ## Features
 
+- **Built-in File Browser**: Browse and select comics from any directory - no command-line required!
 - **Fast Loading**: Creates JSON index files for instant random access to pages
 - **Lightweight**: Zero external dependencies - uses Python's built-in `zipfile` and `tkinter`
 - **Smart Caching**: LRU cache with preloading for smooth navigation
 - **Multiple Viewing Modes**: Fit-to-width, fit-to-height, or actual size
+- **Zoom & Pan**: Full zoom control with mouse wheel and keyboard shortcuts
 - **Keyboard Navigation**: Arrow keys, space, page up/down, home/end
+- **Persistent State**: Remembers your last page and browsing directory
 - **Index Caching**: Stores metadata in `~/.cache/comic_viewer/` for faster subsequent opens
 
 ## Installation
@@ -52,29 +55,47 @@ python -c "from PIL import features; print('JPEG 2000:', features.check('jpg_200
 
 ## Usage
 
-### Basic Usage
+### Quick Start
+
+**Launch with file browser (easiest):**
+
+```bash
+python comic_viewer.py
+```
+
+This opens a graphical file browser where you can navigate to your comics directory and select a file. The browser will remember your last location for next time.
+
+**Or launch directly with a file:**
 
 ```bash
 python comic_viewer.py /path/to/comic.zip
 ```
 
-or (if made executable):
+### File Browser
 
-```bash
-./comic_viewer.py /path/to/comic.zip
-```
+The built-in file browser lets you:
+- Navigate through directories with double-click or Enter
+- Go to parent directory with the `..` entry at the top
+- Filter automatically for comic files (`.cbz` or files containing `jp2`)
+- See directories in cyan/bold, files in white
+- Press Escape to exit (if no file is open) or cancel (if switching files)
+
+While reading a comic, press `o` to open the file browser and switch to a different file.
 
 ### First Run
 
-On first run, the viewer will:
+On first run with a file, the viewer will:
 1. Scan the archive and extract page metadata
 2. Create a JSON index file in `~/.cache/comic_viewer/`
-3. Display the first page
+3. Create a config file in `~/.config/comic_viewer/`
+4. Display the first page (or last read page if returning)
 
 ### Subsequent Runs
 
 On subsequent runs:
 - Index is loaded from cache (instant startup)
+- Last read page is automatically restored
+- File browser starts in your last browsed directory
 - Index is validated against archive (mtime, size, hash)
 - Index is rebuilt automatically if archive was modified
 
@@ -91,11 +112,27 @@ On subsequent runs:
 | `Page Up` | Previous page |
 | `Home` | First page |
 | `End` | Last page |
+| `g` | Go to page (opens dialog) |
 | **Viewing Modes** |
 | `f` | Fit to width |
 | `h` | Fit to height |
-| `a` | Actual size (1:1) |
-| **Application** |
+| `a` | Actual size (or pan left when zoomed) |
+| **Zoom** |
+| `z` | Toggle zoom mode |
+| `+` `=` | Zoom in (25% increments) |
+| `-` `_` | Zoom out (25% increments) |
+| `0` | Reset zoom to 100% (fit-width) |
+| `Ctrl+MouseWheel` | Continuous zoom |
+| **Pan (when zoomed)** |
+| `w` | Pan up |
+| `a` | Pan left |
+| `s` | Pan down |
+| `d` | Pan right |
+| `MouseWheel` | Scroll vertically |
+| `Shift+MouseWheel` | Scroll horizontally |
+| **Other** |
+| `o` | Open file browser |
+| `?` | Show help screen |
 | `q` | Quit |
 | `Escape` | Quit |
 
@@ -103,9 +140,13 @@ On subsequent runs:
 
 ### Supported Archives
 
-- **Format**: ZIP files (`.zip`)
+- **Format**: ZIP files (`.zip`, `.cbz`)
 - **Images**: JPEG 2000 (`.jp2`) - primary format
 - **Compatibility**: Also supports `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`
+
+The file browser automatically filters for:
+- Files with `.cbz` extension (case-insensitive)
+- Files containing `jp2` in the filename (case-insensitive)
 
 ### Archive Structure
 
@@ -161,8 +202,11 @@ Index files are stored in: `~/.cache/comic_viewer/`
 
 ### Cache Management
 
-- Index files can be safely deleted (will be recreated)
+- **Index files**: `~/.cache/comic_viewer/` - can be safely deleted (will be recreated)
+- **State files**: `~/.cache/comic_viewer/` - stores last read page per archive
+- **Config file**: `~/.config/comic_viewer/config.json` - stores preferences and last directory
 - Clear cache: `rm -rf ~/.cache/comic_viewer/`
+- Clear config: `rm ~/.config/comic_viewer/config.json`
 - Cache invalidation is automatic when archive is modified
 
 ## Dependencies
@@ -184,11 +228,14 @@ Index files are stored in: `~/.cache/comic_viewer/`
 
 ### Components
 
-1. **index_manager.py**: Creates and validates JSON index files
-2. **archive_handler.py**: ZIP extraction and page management
-3. **image_cache.py**: LRU caching with preloading
-4. **viewer_window.py**: Tkinter GUI with navigation
-5. **comic_viewer.py**: Main entry point
+1. **comic_viewer.py**: Main entry point with file switching loop
+2. **config_manager.py**: Configuration and state persistence
+3. **file_browser.py**: Graphical file browser dialog
+4. **viewer_window.py**: Tkinter GUI with navigation and viewing
+5. **index_manager.py**: Creates and validates JSON index files
+6. **archive_handler.py**: ZIP extraction and page management
+7. **image_cache.py**: LRU caching with preloading
+8. **state_manager.py**: Last read page tracking per archive
 
 ### Performance Features
 
@@ -233,24 +280,43 @@ rm ~/.cache/comic_viewer/*.json
 python comic_viewer.py /path/to/comic.zip
 ```
 
+### File Browser Not Showing Files
+
+If the file browser appears empty:
+- Check that you're in a directory with `.cbz` files or files containing `jp2` in the name
+- File matching is case-insensitive: `.CBZ`, `.Cbz`, `JP2`, `Jp2` all match
+- Use the `..` entry at the top to navigate to parent directories
+- Subdirectories always show up and can be navigated into
+
+### File Browser Window Not Visible
+
+If the file browser doesn't appear when launching without arguments:
+- Ensure you have a working X server (GUI environment)
+- Try running with a file path directly: `python comic_viewer.py /path/to/comic.zip`
+- Check for errors in the terminal output
+
 ## Development
 
 ### Project Structure
 
 ```
-cbr_convert/
+comic_viewer/
 ├── .venv/                    # uv virtual environment
 ├── .gitignore
 ├── README.md
 ├── CLAUDE.md                 # Development guide
+├── DEPLOYMENT.md             # Deployment instructions
 ├── requirements.txt
 ├── comic_viewer.py          # Main entry point
 └── src/
     ├── __init__.py
+    ├── config_manager.py    # Configuration management
+    ├── file_browser.py      # File browser dialog
+    ├── viewer_window.py     # Tkinter GUI
     ├── index_manager.py     # Index creation/validation
     ├── archive_handler.py   # ZIP extraction
     ├── image_cache.py       # LRU caching
-    └── viewer_window.py     # Tkinter GUI
+    └── state_manager.py     # Reading state tracking
 ```
 
 ### Running Tests
@@ -258,14 +324,34 @@ cbr_convert/
 Currently no automated tests. Manual testing:
 
 ```bash
-# Test basic functionality
+# Test file browser
+python comic_viewer.py
+# Should open file browser in last directory or current directory
+
+# Test direct launch
 python comic_viewer.py /path/to/test.zip
+
+# Test file switching
+# 1. Open a file
+# 2. Press 'o' to open browser
+# 3. Select different file
+# 4. Should switch immediately
+
+# Test config persistence
+python comic_viewer.py  # Select a file from browser
+python comic_viewer.py  # Should start in same directory
 
 # Test index creation
 ls ~/.cache/comic_viewer/
 
-# Test index reuse (should be faster second time)
-python comic_viewer.py /path/to/test.zip
+# Test state persistence
+# 1. Open a file, navigate to page 10
+# 2. Quit (q or Escape)
+# 3. Reopen same file
+# 4. Should resume at page 10
+
+# Run component tests
+python test_file_browser.py
 ```
 
 ## Building and Deploying
