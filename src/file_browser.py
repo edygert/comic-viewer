@@ -51,7 +51,7 @@ class FileBrowser:
             self.dialog.grab_set()
 
         self.dialog.title("Select Comic Archive")
-        self.dialog.geometry("700x550")
+        self.dialog.geometry("900x700")
         self.dialog.configure(bg='#2b2b2b')
 
         # Create UI components
