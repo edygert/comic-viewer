@@ -463,6 +463,8 @@ TIPS
             self.switch_to_file = selected_file
             # Remember directory
             config_manager.update_last_browsed_directory(selected_file.parent)
+            # Remember file
+            config_manager.update_last_opened_file(selected_file)
             # Close viewer
             self.quit()
         # If no file selected (cancelled), continue viewing current file

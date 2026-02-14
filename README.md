@@ -4,6 +4,7 @@ A lightweight Linux application for viewing ZIP archives containing JPEG 2000 (.
 
 ## Features
 
+- **Automatic Resume**: Launches directly into your last opened file - instant "continue reading"
 - **Built-in File Browser**: Browse and select comics from any directory - no command-line required!
 - **Fast Loading**: Creates JSON index files for instant random access to pages
 - **Lightweight**: Zero external dependencies - uses Python's built-in `zipfile` and `tkinter`
@@ -11,7 +12,7 @@ A lightweight Linux application for viewing ZIP archives containing JPEG 2000 (.
 - **Multiple Viewing Modes**: Fit-to-width, fit-to-height, or actual size
 - **Zoom & Pan**: Full zoom control with mouse wheel and keyboard shortcuts
 - **Keyboard Navigation**: Arrow keys, space, page up/down, home/end
-- **Persistent State**: Remembers your last page and browsing directory
+- **Persistent State**: Remembers your last page, browsing directory, and opened file
 - **Index Caching**: Stores metadata in `~/.cache/comic_viewer/` for faster subsequent opens
 
 ## Installation
@@ -57,19 +58,29 @@ python -c "from PIL import features; print('JPEG 2000:', features.check('jpg_200
 
 ### Quick Start
 
-**Launch with file browser (easiest):**
+**Resume your last opened file (fastest):**
 
 ```bash
 python comic_viewer.py
 ```
 
-This opens a graphical file browser where you can navigate to your comics directory and select a file. The browser will remember your last location for next time.
+On subsequent launches, this will automatically open your last viewed comic and resume at your last read page. Perfect for continuing where you left off!
 
-**Or launch directly with a file:**
+**First time or switch to a different file:**
+
+```bash
+python comic_viewer.py
+```
+
+On first run (or if the last file no longer exists), this opens a graphical file browser where you can navigate to your comics directory and select a file. The viewer remembers both your last browsing location and last opened file.
+
+**Launch directly with a specific file:**
 
 ```bash
 python comic_viewer.py /path/to/comic.zip
 ```
+
+This opens the specified file immediately, bypassing both the automatic resume and file browser.
 
 ### File Browser
 
@@ -96,12 +107,15 @@ On first run with a file, the viewer will:
 
 ### Subsequent Runs
 
-On subsequent runs:
-- Index is loaded from cache (instant startup)
-- Last read page is automatically restored
-- File browser starts in your last browsed directory
-- Index is validated against archive (mtime, size, hash)
-- Index is rebuilt automatically if archive was modified
+On subsequent runs (without a CLI argument):
+- **Automatic Resume**: Opens your last viewed file directly (if it still exists)
+- **Instant Startup**: Index loaded from cache, no rescanning needed
+- **Page Restoration**: Resumes at your last read page
+- **Fallback Behavior**: If last file is missing/moved, opens file browser instead
+- **Smart Validation**: Index validated against archive (mtime, size, hash)
+- **Auto-Rebuild**: Index rebuilt automatically if archive was modified
+
+This creates a seamless "continue reading" experience - just launch and you're back where you left off!
 
 ## Keyboard Shortcuts
 
@@ -208,9 +222,9 @@ Index files are stored in: `~/.cache/comic_viewer/`
 
 - **Index files**: `~/.cache/comic_viewer/` - can be safely deleted (will be recreated)
 - **State files**: `~/.cache/comic_viewer/` - stores last read page per archive
-- **Config file**: `~/.config/comic_viewer/config.json` - stores preferences and last directory
+- **Config file**: `~/.config/comic_viewer/config.json` - stores preferences, last directory, and last opened file
 - Clear cache: `rm -rf ~/.cache/comic_viewer/`
-- Clear config: `rm ~/.config/comic_viewer/config.json`
+- Clear config: `rm ~/.config/comic_viewer/config.json` (disables automatic resume)
 - Cache invalidation is automatic when archive is modified
 
 ## Dependencies
@@ -328,11 +342,11 @@ comic_viewer/
 Currently no automated tests. Manual testing:
 
 ```bash
-# Test file browser
-python comic_viewer.py
-# Should open file browser in last directory or current directory
+# Test automatic resume
+python comic_viewer.py  # First run: opens file browser, select a file
+python comic_viewer.py  # Should automatically open the same file
 
-# Test direct launch
+# Test direct launch (overrides last file)
 python comic_viewer.py /path/to/test.zip
 
 # Test file switching
@@ -340,10 +354,12 @@ python comic_viewer.py /path/to/test.zip
 # 2. Press 'o' to open browser
 # 3. Select different file
 # 4. Should switch immediately
+# 5. Relaunch without arguments - should open the newly switched file
 
-# Test config persistence
-python comic_viewer.py  # Select a file from browser
-python comic_viewer.py  # Should start in same directory
+# Test missing file fallback
+python comic_viewer.py  # Opens a file
+# Delete or move that file
+python comic_viewer.py  # Should print warning and open file browser
 
 # Test index creation
 ls ~/.cache/comic_viewer/

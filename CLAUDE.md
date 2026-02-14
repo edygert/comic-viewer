@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A lightweight Linux application for reading and displaying CBR (Comic Book Archive) files. CBR files are RAR archives containing sequential comic book page images.
 
+**Key Features:**
+- Automatic resume: Opens your last viewed file on startup
+- Fast navigation: Cached indices and preloaded images
+- State persistence: Remembers your reading position per file
+- Minimal UI: Keyboard-driven workflow with file switching
+
 ## Development Setup
 
 - **Python Environment**: Use `uv` for virtual environment and dependency management
@@ -25,7 +31,10 @@ source .venv/bin/activate
 uv pip install -r requirements.txt
 
 # Run the application
-python cbr_viewer.py [file.cbr]
+python comic_viewer.py [file.cbz]
+
+# Run without arguments to resume last opened file
+python comic_viewer.py
 ```
 
 ## Architecture
@@ -40,7 +49,8 @@ python cbr_viewer.py [file.cbr]
 
 2. **Configuration Management (config_manager.py)**
    - JSON config at ~/.config/comic_viewer/config.json
-   - Stores last browsed directory
+   - Stores last browsed directory and last opened file
+   - Automatic resume: Opens last file on startup (if no CLI argument provided)
    - Follows XDG Base Directory standards
    - Graceful error handling (print warnings, never crash)
 
@@ -85,8 +95,8 @@ python cbr_viewer.py [file.cbr]
 ## Code Organization
 
 Clean modular structure:
-- **comic_viewer.py**: Main entry point with file switching loop
-- **src/config_manager.py**: Configuration persistence
+- **comic_viewer.py**: Main entry point with startup logic and file switching loop
+- **src/config_manager.py**: Configuration persistence (last directory, last file)
 - **src/file_browser.py**: File browser UI component
 - **src/viewer_window.py**: Main viewing window with all interactions
 - **src/index_manager.py**: Index creation and validation
@@ -95,3 +105,23 @@ Clean modular structure:
 - **src/state_manager.py**: Reading progress tracking
 
 Each module has a single, clear responsibility with graceful error handling.
+
+## Startup Behavior
+
+The application uses a priority cascade for determining which file to open:
+
+1. **CLI Argument** (highest priority): `python comic_viewer.py /path/to/file.cbz`
+   - Directly opens the specified file
+   - Saves as the new last opened file
+
+2. **Last Opened File** (automatic resume): `python comic_viewer.py`
+   - If a last opened file exists in config and the file is still present on disk
+   - Opens that file automatically with message "Resuming last opened file: ..."
+   - Skips the file browser for immediate reading
+
+3. **File Browser** (fallback): `python comic_viewer.py`
+   - If no last opened file or the file no longer exists
+   - Shows file browser starting at last browsed directory
+   - Prints "Last opened file not found, opening file browser..." if applicable
+
+This provides a seamless "continue reading" experience while preserving explicit control via CLI arguments.

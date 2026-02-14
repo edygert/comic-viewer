@@ -99,35 +99,48 @@ Index Files:
 
     # Determine initial archive path
     if args.archive:
-        # Direct launch: use provided argument
+        # Direct launch: use provided argument (highest priority)
         archive_path = args.archive.resolve()
     else:
-        # No argument: show file browser
+        # No CLI argument: check last opened file, then fall back to browser
         config = config_manager.load_config()
 
-        # Determine starting directory
-        start_dir = None
-        if config.get('last_browsed_directory'):
-            start_dir = Path(config['last_browsed_directory'])
-            # Validate directory exists, fallback to cwd if not
-            if not start_dir.exists() or not start_dir.is_dir():
-                start_dir = None
+        # Try last opened file first
+        last_file = config.get('last_opened_file')
+        if last_file:
+            last_file_path = Path(last_file)
+            if last_file_path.exists() and last_file_path.is_file():
+                print(f"Resuming last opened file: {last_file_path.name}")
+                archive_path = last_file_path
+            else:
+                print(f"Last opened file not found, opening file browser...")
+                last_file = None  # Clear for browser flow
 
-        if start_dir is None:
-            start_dir = Path.cwd()
+        # Fall back to file browser if no last file or file doesn't exist
+        if not last_file:
+            # Determine starting directory for browser
+            start_dir = None
+            if config.get('last_browsed_directory'):
+                start_dir = Path(config['last_browsed_directory'])
+                # Validate directory exists, fallback to cwd if not
+                if not start_dir.exists() or not start_dir.is_dir():
+                    start_dir = None
 
-        # Show file browser (no parent needed)
-        browser = FileBrowser(None, start_dir)
-        selected_file = browser.show()
+            if start_dir is None:
+                start_dir = Path.cwd()
 
-        if not selected_file:
-            print("No file selected, exiting.")
-            return 0
+            # Show file browser (no parent needed)
+            browser = FileBrowser(None, start_dir)
+            selected_file = browser.show()
 
-        archive_path = selected_file
+            if not selected_file:
+                print("No file selected, exiting.")
+                return 0
 
-        # Remember the directory for next time
-        config_manager.update_last_browsed_directory(archive_path.parent)
+            archive_path = selected_file
+
+            # Remember the directory for next time
+            config_manager.update_last_browsed_directory(archive_path.parent)
 
     # Main viewing loop - allows switching between files
     while True:
@@ -147,6 +160,9 @@ Index Files:
             # Load or create index
             index_data = index_manager.load_or_create_index(archive_path)
             print(f"Pages: {index_data['total_pages']}")
+
+            # Save as last opened file (after successful validation)
+            config_manager.update_last_opened_file(archive_path)
 
             # Initialize image cache
             image_cache = ImageCache(archive_path, index_data, max_cache_size=5)

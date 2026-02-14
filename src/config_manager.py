@@ -41,14 +41,15 @@ def load_config() -> dict:
     Returns default config if file doesn't exist or is invalid.
 
     Returns:
-        dict with keys: version, last_browsed_directory
+        dict with keys: version, last_browsed_directory, last_opened_file
     """
     config_path = get_config_path()
 
     # Default configuration
     default_config = {
         'version': '1.0',
-        'last_browsed_directory': None
+        'last_browsed_directory': None,
+        'last_opened_file': None
     }
 
     # Check if config file exists
@@ -116,6 +117,26 @@ def update_last_browsed_directory(directory: Path) -> None:
 
     # Update last browsed directory
     config['last_browsed_directory'] = str(directory.resolve())
+
+    # Save updated config
+    save_config(config)
+
+
+def update_last_opened_file(file_path: Path) -> None:
+    """
+    Update last opened file in config.
+
+    Args:
+        file_path: Path to file to remember
+
+    This is a convenience function that loads the config, updates the
+    last_opened_file field, and saves it back.
+    """
+    # Load current config
+    config = load_config()
+
+    # Update last opened file (convert to absolute path string)
+    config['last_opened_file'] = str(file_path.resolve())
 
     # Save updated config
     save_config(config)
