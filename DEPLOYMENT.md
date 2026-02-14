@@ -188,13 +188,13 @@ sudo pacman -S glibc libx11 libxext libxrender libxft
 
 ```bash
 # Create distribution package
-tar -czf comic-viewer-v1.0.0-linux-x64.tar.gz \
+tar -czf comic-viewer-v1.1.0-linux-x64.tar.gz \
     dist/comic-viewer \
     README.md \
     DEPLOYMENT.md
 
 # Users extract and install
-tar -xzf comic-viewer-v1.0.0-linux-x64.tar.gz
+tar -xzf comic-viewer-v1.1.0-linux-x64.tar.gz
 sudo cp comic-viewer /usr/local/bin/
 ```
 

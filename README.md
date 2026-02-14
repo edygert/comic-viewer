@@ -385,12 +385,12 @@ Create a self-contained executable for deployment to other Linux machines:
 ./build.sh
 
 # Package for distribution
-./package-release.sh 1.0.0
+./package-release.sh 1.1.0
 ```
 
 This creates:
 - **Executable**: `dist/comic-viewer` (~26 MB)
-- **Distribution package**: `comic-viewer-v1.0.0-linux-x64.tar.gz`
+- **Distribution package**: `comic-viewer-v1.1.0-linux-x64.tar.gz`
 
 ### Deployment
 
