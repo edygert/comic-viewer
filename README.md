@@ -32,27 +32,33 @@ See `DEPLOYMENT.md` for detailed deployment instructions.
 
 #### Prerequisites
 
-- Python 3.7+ (with tkinter)
-- `uv` (Python package manager)
+- Python 3.7+ (with tkinter) - **Must use system Python, NOT uv's bundled Python**
+- `uv` (Python package manager - for packages only)
 
 #### Setup
+
+**⚠️ CRITICAL: Do NOT use `uv venv` or `uv python install`**
+
+uv's python-build-standalone bundles incompatible Tk/X11 libraries that cause crashes on Linux. Use system Python for the virtual environment:
 
 ```bash
 # Clone or navigate to the project directory
 cd comic_viewer
 
-# Create virtual environment with uv
-uv venv
+# Create virtual environment with SYSTEM Python (not uv Python)
+/usr/bin/python3 -m venv .venv
 
 # Activate virtual environment
 source .venv/bin/activate
 
-# Install dependencies
+# Install dependencies using uv (package manager only)
 uv pip install -r requirements.txt
 
 # Verify JPEG 2000 support
 python -c "from PIL import features; print('JPEG 2000:', features.check('jpg_2000'))"
 ```
+
+**Why this matters**: uv's bundled Python builds have broken Tkinter/X11 integration on Linux, causing XCB threading crashes. Using system Python (`/usr/bin/python3`) with uv only for package management provides both working Tkinter and fast dependency installation.
 
 ## Usage
 
@@ -264,6 +270,26 @@ Index files are stored in: `~/.cache/comic_viewer/`
 - **XDG Cache**: Index files stored following Linux standards
 
 ## Troubleshooting
+
+### Tkinter XCB Crash (Linux)
+
+If you encounter this error:
+```
+[xcb] Unknown sequence number while appending request
+python: ../../src/xcb_io.c:157: append_pending_request: Assertion failed
+```
+
+**Cause**: You're using uv's bundled Python instead of system Python.
+
+**Solution**: Recreate your virtual environment with system Python:
+```bash
+rm -rf .venv
+/usr/bin/python3 -m venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+See the Developer Setup section above for details.
 
 ### JPEG 2000 Support Missing
 

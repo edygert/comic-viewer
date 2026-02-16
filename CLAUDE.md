@@ -14,9 +14,24 @@ A lightweight Linux application for reading and displaying CBR (Comic Book Archi
 
 ## Development Setup
 
-- **Python Environment**: Use `uv` for virtual environment and dependency management
+- **Python Environment**: Use **system Python** (`/usr/bin/python3`) for venv creation
+- **Package Manager**: Use `uv` for fast dependency installation (but NOT for Python installation)
 - **Philosophy**: Keep the viewer lightweight - minimal dependencies, fast startup, low resource usage
 - **Versions**: Always use the latest stable versions of libraries, tools, and packages
+
+### Important: uv Python Build Issue
+
+**Do NOT use** `uv python install` or uv-managed Python builds. They bundle incompatible Tk/X11 libraries that cause XCB crashes on Linux.
+
+**Correct setup:**
+```bash
+# Use system Python for venv
+/usr/bin/python3 -m venv .venv
+source .venv/bin/activate
+
+# Use uv only for package management
+uv pip install -r requirements.txt
+```
 
 ### Common Commands
 
