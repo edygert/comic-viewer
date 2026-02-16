@@ -269,6 +269,7 @@ class ViewerWindow:
         """Update status bar text."""
         page_num = self.current_page + 1
         total_pages = self.index_data['total_pages']
+        filename = self.archive_path.name
 
         if self.zoom_mode:
             zoom_pct = int(self.zoom_level * 100)
@@ -278,7 +279,7 @@ class ViewerWindow:
             mode_text = self.viewing_mode.replace('-', ' ').title()
             shortcuts = "[←→ navigate, g goto, f/h/a modes, z zoom, ? help, q quit]"
 
-        status = f"Page {page_num} of {total_pages}  |  Mode: {mode_text}  |  {shortcuts}"
+        status = f"{filename}  |  Page {page_num} of {total_pages}  |  Mode: {mode_text}  |  {shortcuts}"
         self.status_bar.config(text=status)
 
     def next_page(self):
