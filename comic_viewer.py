@@ -88,7 +88,7 @@ Index Files:
     parser.add_argument(
         '--version',
         action='version',
-        version='Comic Viewer 1.2.1'
+        version='Comic Viewer 1.3.0'
     )
 
     args = parser.parse_args()
