@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 from .image_cache import ImageCache
 from . import state_manager, config_manager
 from .file_browser import FileBrowser
+from .thumbnail_browser import ThumbnailBrowser
 
 
 class ViewerWindow:
@@ -176,8 +177,9 @@ class ViewerWindow:
         # Help
         self.root.bind('?', lambda e: self.show_help())
 
-        # Open file browser
+        # Open file browser / thumbnail browser
         self.root.bind('o', lambda e: self.open_file_browser())
+        self.root.bind('t', lambda e: self.open_thumbnail_browser())
 
         # Quit
         self.root.bind('q', lambda e: self.quit())
@@ -375,6 +377,7 @@ PAN (when zoomed)
 
 OTHER
   o                      Open file browser
+  t                      Open thumbnail browser
   ?                      Show this help screen
   q  Escape              Quit viewer
 
@@ -469,6 +472,18 @@ TIPS
             # Close viewer
             self.quit()
         # If no file selected (cancelled), continue viewing current file
+
+    def open_thumbnail_browser(self):
+        """Open thumbnail browser to navigate pages visually."""
+        browser = ThumbnailBrowser(
+            parent=self.root,
+            archive_path=self.archive_path,
+            index_data=self.index_data,
+            current_page=self.current_page,
+        )
+        selected_page = browser.show()
+        if selected_page is not None:
+            self.show_page(selected_page)
 
     def quit(self):
         """Close the viewer."""

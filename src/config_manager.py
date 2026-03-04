@@ -49,7 +49,8 @@ def load_config() -> dict:
     default_config = {
         'version': '1.0',
         'last_browsed_directory': None,
-        'last_opened_file': None
+        'last_opened_file': None,
+        'thumbnail_cache_size': 500,
     }
 
     # Check if config file exists
